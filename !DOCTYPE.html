@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>말랑말랑 바운스볼: 무지개 동산 대모험</title>
+    <!-- Tailwind CSS 및 동글동글하고 귀여운 구글 폰트 적용 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', 'Nanum Pen Script', sans-serif;
+            background: linear-gradient(135deg, #fdfbf7 0%, #eef2f3 100%);
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+        /* 구름 둥실둥실 애니메이션 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .floating-cloud {
+            animation: float 4s ease-in-out infinite;
+        }
+        /* 귀여운 푸딩 스타일 버튼 효과 */
+        .pudding-btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 0px #d97706;
+        }
+        .pudding-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0px #d97706;
+        }
+        .pudding-blue-btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 0px #2563eb;
+        }
+        .pudding-blue-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0px #2563eb;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-3 select-none overflow-hidden">
+
+    <div class="relative w-full max-w-3xl flex flex-col items-center gap-3">
+        
+        <!-- 깜찍한 헤더 및 점수판 -->
+        <div class="w-full flex items-center justify-between bg-white/80 backdrop-blur-md px-5 py-3 rounded-3xl border-4 border-yellow-300 shadow-lg">
+            <div class="flex items-center gap-2">
+                <span class="text-3xl text-pink-500 floating-cloud">🎈</span>
+                <span class="text-2xl sm:text-3xl font-extrabold tracking-wide bg-gradient-to-r from-pink-500 via-orange-400 to-yellow-500 bg-clip-text text-transparent">
+                    말랑바운스! 무지개동산
+                </span>
+            </div>
+            
+            <div class="flex items-center gap-4 text-slate-700 text-lg sm:text-xl">
+                <div>
+                    단계: <span id="hud-stage" class="text-pink-500 font-black text-2xl">1</span> / <span id="hud-total-stages" class="text-slate-400">5</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    별: <span id="hud-stars" class="text-amber-500 font-black text-2xl">0</span> <span class="text-amber-400">⭐</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 게임 캔버스 영역 -->
+        <div class="relative w-full aspect-[4/3] rounded-3xl overflow-hidden border-8 border-yellow-200 bg-sky-100 shadow-2xl flex items-center justify-center">
+            <canvas id="gameCanvas" class="absolute top-0 left-0 w-full h-full block"></canvas>
+
+            <!-- 첫 대기 화면 오버레이 -->
+            <div id="start-overlay" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 p-6 transition-all duration-300">
+                <div class="text-center max-w-md">
+                    <span class="text-7xl mb-4 block floating-cloud">🌸</span>
+                    <h1 class="text-4xl sm:text-5xl font-black text-slate-800 mb-3">말랑바운스 볼!</h1>
+                    <p class="text-lg text-slate-600 mb-6 font-medium">귀여운 '말랑이'가 무지개 나라의 별들을 모두 모아 집으로 무사히 돌아가도록 도와주세요!</p>
+                    
+                    <button id="btn-start" class="pudding-btn px-10 py-4 bg-yellow-400 hover:bg-yellow-300 text-slate-800 font-extrabold text-2xl rounded-2xl border-4 border-slate-800">
+                        모험 시작하기! 🎮
+                    </button>
+                </div>
+            </div>
+
+            <!-- 미션 완료 / 실패 알림 오버레이 -->
+            <div id="status-overlay" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/95 p-6 hidden transition-all duration-300">
+                <div class="text-center max-w-sm scale-95 opacity-0 transition-all duration-300" id="status-modal-content">
+                    <div id="status-icon" class="text-7xl mb-4 floating-cloud">
+                        🎉
+                    </div>
+                    <h2 id="status-title" class="text-3xl sm:text-4xl font-black mb-3 text-slate-800">우와! 성공했어요!</h2>
+                    <p id="status-desc" class="text-slate-600 text-lg mb-6">정말 멋진 실력이에요! 다음 동산으로 가볼까요?</p>
+                    
+                    <div class="flex flex-col gap-3">
+                        <button id="btn-overlay-primary" class="pudding-btn w-full px-8 py-3.5 bg-yellow-400 hover:bg-yellow-300 text-slate-800 font-extrabold text-xl rounded-2xl border-4 border-slate-800">
+                            다음 동산 가기
+                        </button>
+                        <button id="btn-overlay-secondary" class="pudding-blue-btn w-full px-8 py-3 bg-blue-400 hover:bg-blue-300 text-white font-extrabold text-xl rounded-2xl border-4 border-slate-800">
+                            처음부터 다시하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full flex flex-col md:flex-row items-center justify-between gap-3">
+            <!-- 키보드 안내 및 도우미 치트키 -->
+            <div class="flex items-center justify-between bg-white/80 backdrop-blur-md px-5 py-3 rounded-2xl border-2 border-slate-200 w-full gap-3">
+                <div class="hidden sm:flex items-center gap-4 text-sm text-slate-600">
+                    <div class="flex items-center gap-1">
+                        <kbd class="px-2 py-1 bg-slate-200 rounded border border-slate-300 text-slate-800 font-bold shadow">◀</kbd> / <kbd class="px-2 py-1 bg-slate-200 rounded border border-slate-300 text-slate-800 font-bold shadow">A</kbd> 왼쪽으로
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <kbd class="px-2 py-1 bg-slate-200 rounded border border-slate-300 text-slate-800 font-bold shadow">▶</kbd> / <kbd class="px-2 py-1 bg-slate-200 rounded border border-slate-300 text-slate-800 font-bold shadow">D</kbd> 오른쪽으로
+                    </div>
+                </div>
+                
+                <!-- 초등학생을 위한 무적/도움 기능 패널 -->
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
+                    <button id="helper-slow" class="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-bold rounded-xl border-2 border-purple-300 transition-all duration-100 active:scale-95 flex items-center gap-1">
+                        🐢 느리게 하기
+                    </button>
+                    <button id="helper-skip" class="px-4 py-2 bg-pink-100 hover:bg-pink-200 text-pink-700 text-sm font-bold rounded-xl border-2 border-pink-300 transition-all duration-100 active:scale-95 flex items-center gap-1">
+                        ✨ 바로 다음 단계로
+                    </button>
+                </div>
+            </div>
+
+            <!-- 모바일/테블릿 터치 버튼 패널 (데스크탑이 아닐 때 아주 큼직하게 표시) -->
+            <div class="flex w-full justify-between items-center px-1 md:hidden gap-3">
+                <div class="flex gap-3">
+                    <button id="ctrl-left" class="w-16 h-16 flex items-center justify-center rounded-2xl bg-white border-4 border-yellow-300 active:bg-yellow-100 text-slate-700 shadow-md transition-transform duration-75 select-none touch-none">
+                        <span class="text-3xl">◀</span>
+                    </button>
+                    <button id="ctrl-right" class="w-16 h-16 flex items-center justify-center rounded-2xl bg-white border-4 border-yellow-300 active:bg-yellow-100 text-slate-700 shadow-md transition-transform duration-75 select-none touch-none">
+                        <span class="text-3xl">▶</span>
+                    </button>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="ctrl-restart" class="w-12 h-12 flex items-center justify-center rounded-xl bg-white border-2 border-slate-300 text-slate-600 active:bg-slate-100 transition-all select-none touch-none" title="다시하기">
+                        <span class="text-xl">🔄</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    class CuteAudio {
+        constructor() {
+            this.ctx = null;
+            this.muted = false;
+        }
+
+        init() {
+            if (!this.ctx) {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        playTone(freq, type, duration, slideTo = 0) {
+            if (this.muted) return;
+            this.init();
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+
+            const osc = this.ctx.createOscillator();
+            const gainNode = this.ctx.createGain();
+
+            osc.type = type; // 'sine', 'triangle', 'square', 'sawtooth'
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            
+            if (slideTo > 0) {
+                osc.frequency.exponentialRampToValueAtTime(slideTo, this.ctx.currentTime + duration);
+            }
+
+            gainNode.gain.setValueAtTime(0.2, this.ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+            osc.connect(gainNode);
+            gainNode.connect(this.ctx.destination);
+
+            osc.start();
+            osc.stop(this.ctx.currentTime + duration);
+        }
+
+        // 통통 튀는 소리
+        playBounce() {
+            this.playTone(330, 'triangle', 0.15, 520); // 뿅~
+        }
+
+        // 꽃 트램펄린 고공 점프 소리
+        playSuperBounce() {
+            this.playTone(260, 'sine', 0.3, 780); // 뽀오옹~!
+        }
+
+        // 별을 먹었을 때 소리 (딩동댕 느낌)
+        playCollect() {
+            this.playTone(523.25, 'sine', 0.1); // 도
+            setTimeout(() => {
+                this.playTone(659.25, 'sine', 0.1); // 미
+                setTimeout(() => {
+                    this.playTone(783.99, 'sine', 0.15); // 솔
+                }, 60);
+            }, 60);
+        }
+
+        // 스테이지 완료 축하 팡파레
+        playStageClear() {
+            const notes = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => {
+                    this.playTone(freq, 'sine', 0.3);
+                }, idx * 100);
+            });
+        }
+
+        // 실수로 가시를 밟았을 때 소리
+        playFail() {
+            this.playTone(300, 'sawtooth', 0.4, 80); // 삐익~무룩
+        }
+    }
+
+    const audio = new CuteAudio();
+
+    const GAME_WIDTH = 800;
+    const GAME_HEIGHT = 600;
+    const GRID_SIZE = 40;
+
+    // 기믹 블록 범례:
+    // 1: 기본 구름 블록 (보송보송 파란 구름)
+    // 2: 해바라기 트램펄린 (완전 높이 뛰기)
+    // 3: 아기 고슴도치 가시 (따끔조심!)
+    // 4: 바삭바삭 과자 블록 (한 번 튕기면 사르륵 부서짐)
+    // S: 하트스타 (가까이 가면 먹어져요)
+    // P: 무지개 집 포탈 (집으로 쏙!)
+
+    const STAGE_TEMPLATES = [
+        // STAGE 1: 안녕 무지개 동산 (매우 쉬운 연습용)
+        {
+            ballStart: { x: 100, y: 300 },
+            grid: [
+                "                                        ",
+                "                                        ",
+                "                                        ",
+                "                                        ",
+                "                 S                      ",
+                "                111                     ",
+                "                                        ",
+                "                                        ",
+                "                                    P   ",
+                "                                  1111  ",
+                "         S                              ",
+                "        111                             ",
+                "                                        ",
+                "1111111111111111111111111111111111111111",
+                "1111111111111111111111111111111111111111"
+            ]
+        },
+        // STAGE 2: 고슴도치 친구 조심하기! (가시 기초)
+        {
+            ballStart: { x: 100, y: 200 },
+            grid: [
+                "                                        ",
+                "                                        ",
+                "                                        ",
+                "                                        ",
+                "                                    S   ",
+                "                                  1111  ",
+                "             3333                       ",
+                "            111111                      ",
+                "                                        ",
+                "       S                                ",
+                "     1111                               ",
+                "                                      P ",
+                "                                    1111",
+                "1111111111111111111111111111111111111111",
+                "1111111111111111111111111111111111111111"
+            ]
+        },
+        // STAGE 3: 꽃밭 위의 날개 점프! (트램펄린)
+        {
+            ballStart: { x: 100, y: 400 },
+            grid: [
+                "                                        ",
+                "                                        ",
+                "                      S                 ",
+                "                     111                ",
+                "                                        ",
+                "                                      P ",
+                "               S                    1111",
+                "              111                       ",
+                "                                        ",
+                "        2                               ",
+                "       111                              ",
+                "                                        ",
+                "                                        ",
+                "1111111111111111113333331111111111111111",
+                "1111111111111111111111111111111111111111"
+            ]
+        },
+        // STAGE 4: 바삭바삭 초코 비스킷 발판 (유리 블록)
+        {
+            ballStart: { x: 100, y: 400 },
+            grid: [
+                "                                        ",
+                "                                        ",
+                "                                      P ",
+                "                                     111",
+                "                           S            ",
+                "                          44            ",
+                "                S                       ",
+                "               44                       ",
+                "                                        ",
+                "         2                              ",
+                "        111                             ",
+                "                                        ",
+                "                                        ",
+                "1111111111111111113333333333111111111111",
+                "1111111111111111111111111111111111111111"
+            ]
+        },
+        // STAGE 5: 과자 숲을 빠져나가요! (최종 스테이지)
+        {
+            ballStart: { x: 80, y: 480 },
+            grid: [
+                "                                      P ",
+                "                                     111",
+                "                                        ",
+                "                             S          ",
+                "                            111         ",
+                "                                        ",
+                "                     4444               ",
+                "                                        ",
+                "              33                        ",
+                "             111                        ",
+                "                                        ",
+                "       2                                ",
+                "      111                     S         ",
+                "1111111111113333311111111133311111331111",
+                "1111111111111111111111111111111111111111"
+            ]
+        }
+    ];
+
+    let canvas = document.getElementById('gameCanvas');
+    let ctx = canvas.getContext('2d');
+    
+    canvas.width = GAME_WIDTH;
+    canvas.height = GAME_HEIGHT;
+
+    let isSlowMode = false;
+
+    let gameState = {
+        currentLevelIdx: 0,
+        ball: {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            radius: 14, // 조작 편의를 위해 볼 크기를 살짝 더 키웠어요!
+            scaleX: 1,  // 말랑한 찌그러짐 효과
+            scaleY: 1,
+            color: '#f43f5e', // 핑크핑크한 색상
+            blushColor: '#fda4af', // 볼터치용 소프트 핑크
+            gravity: 0.35,
+            bounceForce: -9.0,
+            superBounceForce: -13.5,
+            moveSpeed: 4.8,
+            trail: []
+        },
+        blocks: [],
+        stars: [],
+        portal: null,
+        particles: [],
+        isGameOver: false,
+        isClear: false,
+        isActive: false
+    };
+
+    let keyboard = { left: false, right: false };
+    let touchLeft = false;
+    let touchRight = false;
+
+    // 키보드 조작 이벤트 리스너 등록
+    window.addEventListener('keydown', e => {
+        if (!gameState.isActive) return;
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keyboard.left = true;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keyboard.right = true;
+    });
+
+    window.addEventListener('keyup', e => {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keyboard.left = false;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keyboard.right = false;
+    });
+
+    const setupTouchButton = (btnId, stateSetter) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+
+        const setPressed = (val) => { stateSetter(val); };
+
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            setPressed(true);
+        }, { passive: false });
+
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            setPressed(false);
+        }, { passive: false });
+
+        // 마우스 클릭도 지원
+        btn.addEventListener('mousedown', () => setPressed(true));
+        btn.addEventListener('mouseup', () => setPressed(false));
+        btn.addEventListener('mouseleave', () => setPressed(false));
+    };
+
+    setupTouchButton('ctrl-left', (val) => touchLeft = val);
+    setupTouchButton('ctrl-right', (val) => touchRight = val);
+
+    document.getElementById('ctrl-restart').addEventListener('click', () => restartLevel());
+
+    class SparkleParticle {
+        constructor(x, y, color, size, vx, vy, isHeart = false) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.size = size;
+            this.vx = vx;
+            this.vy = vy;
+            this.life = 30;
+            this.maxLife = 30;
+            this.isHeart = isHeart;
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.05; // 부드럽게 낙하
+            this.life--;
+        }
+
+        draw(ctx) {
+            ctx.save();
+            ctx.globalAlpha = this.life / this.maxLife;
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = this.color;
+
+            if (this.isHeart) {
+                // 하트 입자 드로잉
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y + this.size / 4);
+                ctx.bezierCurveTo(this.x, this.y - this.size / 2, this.x - this.size, this.y - this.size / 2, this.x - this.size, this.y + this.size / 4);
+                ctx.bezierCurveTo(this.x - this.size, this.y + (this.size * 5) / 8, this.x, this.y + (this.size * 9) / 8, this.x, this.y + this.size * 1.2);
+                ctx.bezierCurveTo(this.x, this.y + (this.size * 9) / 8, this.x + this.size, this.y + (this.size * 5) / 8, this.x + this.size, this.y + this.size / 4);
+                ctx.bezierCurveTo(this.x + this.size, this.y - this.size / 2, this.x, this.y - this.size / 2, this.x, this.y + this.size / 4);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                // 반짝반짝 별 모양/원형 입자 드로잉
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+    }
+
+    // 퐁퐁 튀어오를 때 나오는 보송구름 먼지 이펙트
+    function spawnBounceParticles(x, y, color) {
+        for (let i = 0; i < 8; i++) {
+            const size = Math.random() * 4 + 3;
+            const angle = Math.random() * Math.PI - Math.PI;
+            const speed = Math.random() * 2 + 1;
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+            gameState.particles.push(new SparkleParticle(x, y, '#ffffff', size, vx, vy));
+        }
+    }
+
+    // 하트스타를 맛있게 냠냠 먹었을 때 축하 이펙트
+    function spawnCollectParticles(x, y) {
+        for (let i = 0; i < 15; i++) {
+            const size = Math.random() * 6 + 4;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 4 + 2;
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+            gameState.particles.push(new SparkleParticle(x, y, '#fbbf24', size, vx, vy, true));
+        }
+    }
+
+    function loadLevel(idx) {
+        if (idx < 0 || idx >= STAGE_TEMPLATES.length) return;
+        
+        gameState.currentLevelIdx = idx;
+        const template = STAGE_TEMPLATES[idx];
+        
+        // 말랑이 초기 위치 설정
+        gameState.ball.x = template.ballStart.x;
+        gameState.ball.y = template.ballStart.y;
+        gameState.ball.vx = 0;
+        gameState.ball.vy = 0;
+        gameState.ball.scaleX = 1;
+        gameState.ball.scaleY = 1;
+        gameState.ball.trail = [];
+
+        // 데이터 싹 비우기
+        gameState.blocks = [];
+        gameState.stars = [];
+        gameState.portal = null;
+        gameState.particles = [];
+        gameState.isGameOver = false;
+        gameState.isClear = false;
+
+        // 템플릿 텍스트를 읽고 기믹 요소 생성
+        for (let row = 0; row < template.grid.length; row++) {
+            const line = template.grid[row];
+            for (let col = 0; col < line.length; col++) {
+                const char = line[col];
+                const x = col * GRID_SIZE;
+                const y = row * GRID_SIZE;
+
+                if (char === ' ') continue;
+
+                if (char === 'S') {
+                    gameState.stars.push({
+                        x: x + GRID_SIZE/2,
+                        y: y + GRID_SIZE/2,
+                        collected: false,
+                        pulseOffset: Math.random() * 100
+                    });
+                } else if (char === 'P') {
+                    gameState.portal = {
+                        x: x + GRID_SIZE/2,
+                        y: y + GRID_SIZE/2,
+                        glowOffset: 0
+                    };
+                } else {
+                    const type = parseInt(char);
+                    if (!isNaN(type)) {
+                        gameState.blocks.push({
+                            x: x,
+                            y: y,
+                            width: GRID_SIZE,
+                            height: GRID_SIZE,
+                            type: type,
+                            // 과자 부서지는 체력 카운트
+                            hp: type === 4 ? 1 : 99999
+                        });
+                    }
+                }
+            }
+        }
+
+        // 화면 텍스트 갱신
+        document.getElementById('hud-stage').innerText = idx + 1;
+        document.getElementById('hud-total-stages').innerText = STAGE_TEMPLATES.length;
+        updateHUDStars();
+    }
+
+    function updateHUDStars() {
+        const collected = gameState.stars.filter(s => s.collected).length;
+        document.getElementById('hud-stars').innerText = `${collected}/${gameState.stars.length}`;
+    }
+
+    // 단계 클리어 칭찬 모달
+    function triggerLevelClear() {
+        if (gameState.isClear) return;
+        gameState.isClear = true;
+        audio.playStageClear();
+        
+        const isLastLevel = (gameState.currentLevelIdx + 1 >= STAGE_TEMPLATES.length);
+        const titleText = isLastLevel ? "🎉 축! 모두 클리어! 🎉" : "✨ 단계 성공! ✨";
+        const descText = isLastLevel ? "정말 멋져요! 모든 무지개 동산을 구하고 우승 메달을 얻었어요!" : "훌륭해요! 다음 무지개 나라로 함께 떠나요!";
+        const buttonText = isLastLevel ? "처음부터 다시하기" : "다음 단계로 가기";
+        
+        showStatusModal(titleText, descText, "🏆", buttonText, () => {
+            if (isLastLevel) {
+                loadLevel(0);
+                hideStatusModal();
+            } else {
+                loadLevel(gameState.currentLevelIdx + 1);
+                hideStatusModal();
+            }
+        });
+    }
+
+    // 가시 충돌 시 귀여운 안내
+    function triggerGameOver() {
+        if (gameState.isGameOver) return;
+        gameState.isGameOver = true;
+        audio.playFail();
+        
+        // 귀여운 울음 표정 하트 폭발 효과
+        spawnCollectParticles(gameState.ball.x, gameState.ball.y);
+        
+        showStatusModal("아이쿠! 닿았어요 😭", "가시에 부딪혔지만 걱정 마세요! 언제든 다시 힘차게 튕길 수 있어요!", "⭐", "다시 해보기", () => {
+            restartLevel();
+            hideStatusModal();
+        });
+    }
+
+    function restartLevel() {
+        loadLevel(gameState.currentLevelIdx);
+    }
+
+    function checkCollision(circle, rect) {
+        const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+        const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+
+        const distanceX = circle.x - closestX;
+        const distanceY = circle.y - closestY;
+        const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+        if (distanceSquared < circle.radius * circle.radius) {
+            const overlapX = circle.radius - Math.abs(distanceX);
+            const overlapY = circle.radius - Math.abs(distanceY);
+
+            let direction = 'top';
+            if (distanceY < 0 && (overlapY < overlapX || distanceX === 0)) {
+                direction = 'top';
+            } else if (distanceY > 0 && (overlapY < overlapX || distanceX === 0)) {
+                direction = 'bottom';
+            } else if (distanceX < 0) {
+                direction = 'left';
+            } else {
+                direction = 'right';
+            }
+
+            return {
+                collided: true,
+                closestX: closestX,
+                closestY: closestY,
+                dir: direction,
+                overlapX: overlapX,
+                overlapY: overlapY
+            };
+        }
+        return { collided: false };
+    }
+
+    function drawStars(ctx) {
+        ctx.save();
+        gameState.stars.forEach(s => {
+            if (s.collected) return;
+            
+            // 둥실둥실 살랑살랑 크기 조절
+            const pulse = Math.sin((Date.now() / 150) + s.pulseOffset) * 2.5;
+            const size = 13 + pulse;
+
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#f59e0b';
+            
+            // 귀여운 통통 하트스타 노란색
+            ctx.beginPath();
+            const spikes = 5;
+            const outerRadius = size;
+            const innerRadius = size * 0.5;
+            let rot = Math.PI / 2 * 3;
+            let x = s.x;
+            let y = s.y;
+            let step = Math.PI / spikes;
+
+            ctx.moveTo(s.x, s.y - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = s.x + Math.cos(rot) * outerRadius;
+                y = s.y + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+
+                x = s.x + Math.cos(rot) * innerRadius;
+                y = s.y + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(s.x, s.y - outerRadius);
+            ctx.closePath();
+            ctx.fillStyle = '#f59e0b';
+            ctx.fill();
+
+            // 별 내부 웃는 얼굴
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(s.x - 4, s.y - 2, 2, 0, Math.PI * 2);
+            ctx.arc(s.x + 4, s.y - 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(s.x, s.y + 1, 3.5, 0, Math.PI);
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        });
+        ctx.restore();
+    }
+
+    // 무지개 모양의 예쁜 골인 포탈
+    function drawPortal(ctx) {
+        if (!gameState.portal) return;
+        const p = gameState.portal;
+        const allStarsCollected = gameState.stars.every(s => s.collected);
+
+        ctx.save();
+        p.glowOffset += 0.05;
+
+        // 모든 별을 다 먹으면 화려한 무지개 도넛으로 개방!
+        if (allStarsCollected) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#a855f7';
+            
+            // 무지개 고리 그리기
+            const colors = ['#f43f5e', '#fb923c', '#facc15', '#4ade80', '#60a5fa', '#a855f7'];
+            colors.forEach((col, idx) => {
+                ctx.strokeStyle = col;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 25 - idx * 3, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            // 포탈 깃발 및 안내
+            ctx.fillStyle = '#a855f7';
+            ctx.font = 'bold 12px Jua';
+            ctx.fillText("어서와요!", p.x - 21, p.y - 32);
+        } else {
+            // 비활성화된 무지개 집 실루엣
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(241, 245, 249, 0.5)';
+            ctx.fill();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 12px Jua';
+            ctx.fillText("자물쇠🔓", p.x - 17, p.y - 28);
+        }
+        ctx.restore();
+    }
+
+    function drawBlocks(ctx) {
+        gameState.blocks.forEach(b => {
+            ctx.save();
+            
+            // 기믹별 테마 입히기
+            switch (b.type) {
+                case 1: // 포송포송 하늘색 구름 블록
+                    ctx.fillStyle = '#bae6fd';
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 3;
+                    break;
+                case 2: // 노랑 해바라기 고탄성 블록
+                    ctx.fillStyle = '#fef08a';
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 3;
+                    break;
+                case 3: // 삐죽 가시 (귀여운 연분홍 고슴도치 모양 가시)
+                    ctx.fillStyle = '#fecdd3';
+                    ctx.strokeStyle = '#fb7185';
+                    ctx.lineWidth = 2.5;
+                    break;
+                case 4: // 부서지는 바삭 초코쿠키 블록
+                    ctx.fillStyle = '#fed7aa';
+                    ctx.strokeStyle = '#ea580c';
+                    ctx.lineWidth = 2;
+                    break;
+            }
+
+            if (b.type === 3) {
+                // 부드럽고 동글한 가시 모양 그리기
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y + b.height);
+                for(let i=0; i<4; i++) {
+                    const spikeW = b.width / 4;
+                    ctx.lineTo(b.x + i * spikeW + spikeW/2, b.y + 10);
+                    ctx.lineTo(b.x + (i + 1) * spikeW, b.y + b.height);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // 가시 내부의 점박이 무늬
+                ctx.fillStyle = '#e11d48';
+                ctx.beginPath();
+                ctx.arc(b.x + b.width/2, b.y + b.height - 10, 3, 0, Math.PI*2);
+                ctx.fill();
+            } else {
+                // 발판은 부드럽게 둥근 사각형으로
+                ctx.beginPath();
+                const radius = 10;
+                ctx.roundRect(b.x, b.y, b.width, b.height, radius);
+                ctx.fill();
+                ctx.stroke();
+
+                // 블록별 특수 표정 및 문양 추가
+                if (b.type === 1) {
+                    // 구름 미소
+                    ctx.fillStyle = '#0369a1';
+                    ctx.beginPath();
+                    ctx.arc(b.x + 15, b.y + 15, 1.5, 0, Math.PI*2);
+                    ctx.arc(b.x + 25, b.y + 15, 1.5, 0, Math.PI*2);
+                    ctx.fill();
+                } else if (b.type === 2) {
+                    // 해바라기 잎사귀 무늬
+                    ctx.strokeStyle = '#ca8a04';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(b.x + 10, b.y + 20);
+                    ctx.quadraticCurveTo(b.x + b.width/2, b.y + 10, b.x + b.width - 10, b.y + 20);
+                    ctx.stroke();
+                } else if (b.type === 4) {
+                    // 초코칩 무늬
+                    ctx.fillStyle = '#9a3412';
+                    ctx.beginPath();
+                    ctx.arc(b.x + 10, b.y + 12, 2.5, 0, Math.PI*2);
+                    ctx.arc(b.x + 20, b.y + 25, 2, 0, Math.PI*2);
+                    ctx.arc(b.x + 30, b.y + 15, 3, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+        });
+    }
+
+    function drawBall(ctx) {
+        if (gameState.isGameOver) return;
+        const ball = gameState.ball;
+
+        // 귀여운 잔상 효과 (꼬리 그리기)
+        ctx.save();
+        for (let i = 0; i < ball.trail.length; i++) {
+            const pos = ball.trail[i];
+            const opacity = i / ball.trail.length * 0.4;
+            ctx.globalAlpha = opacity;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, ball.radius * 0.8, 0, Math.PI * 2);
+            ctx.fillStyle = '#fda4af';
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // 몸통 그리기 (스케일 업 다운으로 말랑말랑한 성질 표현)
+        ctx.save();
+        ctx.translate(ball.x, ball.y);
+        ctx.scale(ball.scaleX, ball.scaleY);
+        
+        ctx.beginPath();
+        ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+        
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#f43f5e';
+        ctx.fillStyle = ball.color;
+        ctx.fill();
+
+        // 볼터치 그리기 (부끄부끄 분홍 볼)
+        ctx.fillStyle = ball.blushColor;
+        ctx.beginPath();
+        ctx.arc(-7, 2, 3.5, 0, Math.PI * 2);
+        ctx.arc(7, 2, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 움직이는 방향에 따라 눈동자가 굴러가도록 구현
+        let eyeOffset = 0;
+        if (keyboard.left || touchLeft) eyeOffset = -2;
+        if (keyboard.right || touchRight) eyeOffset = 2;
+
+        // 초롱초롱 두 눈
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-6 + eyeOffset, -3, 3.5, 0, Math.PI * 2);
+        ctx.arc(6 + eyeOffset, -3, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 검은 눈동자
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(-6 + eyeOffset * 1.5, -3, 1.8, 0, Math.PI * 2);
+        ctx.arc(6 + eyeOffset * 1.5, -3, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 싱긋 미소 입
+        ctx.beginPath();
+        ctx.arc(eyeOffset, 2, 4, 0, Math.PI);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    function updateGame() {
+        if (!gameState.isActive || gameState.isGameOver || gameState.isClear) return;
+
+        const ball = gameState.ball;
+
+        // 잔상 기록
+        ball.trail.push({ x: ball.x, y: ball.y });
+        if (ball.trail.length > 5) ball.trail.shift();
+
+        // 이동 제어
+        let directionInput = 0;
+        if (keyboard.left || touchLeft) directionInput = -1;
+        if (keyboard.right || touchRight) directionInput = 1;
+
+        ball.vx = directionInput * ball.moveSpeed;
+
+        // 거북이 모드(느리게 하기)일 때 물리 속도를 절반으로 감속
+        const speedScale = isSlowMode ? 0.55 : 1.0;
+
+        ball.vy += ball.gravity * speedScale;
+        ball.x += ball.vx * speedScale;
+        ball.y += ball.vy * speedScale;
+
+        // 말랑말랑 신축 애니메이션 프레임 제어
+        ball.scaleY = 1 + (Math.abs(ball.vy) * 0.022);
+        ball.scaleX = 1 - (Math.abs(ball.vy) * 0.018);
+
+        const clampRange = [0.8, 1.25];
+        ball.scaleY = Math.max(clampRange[0], Math.min(clampRange[1], ball.scaleY));
+        ball.scaleX = Math.max(clampRange[0], Math.min(clampRange[1], ball.scaleX));
+
+        ball.scaleX += (1 - ball.scaleX) * 0.15;
+        ball.scaleY += (1 - ball.scaleY) * 0.15;
+
+        // 양옆 경계면 튕기기 방지
+        if (ball.x - ball.radius < 0) {
+            ball.x = ball.radius;
+            ball.vx = 0;
+        }
+        if (ball.x + ball.radius > GAME_WIDTH) {
+            ball.x = GAME_WIDTH - ball.radius;
+            ball.vx = 0;
+        }
+
+        // 바닥 낭떠러지로 떨어지면 리트라이!
+        if (ball.y - ball.radius > GAME_HEIGHT) {
+            triggerGameOver();
+        }
+
+        // 블록들과 충돌 처리
+        for (let i = gameState.blocks.length - 1; i >= 0; i--) {
+            const b = gameState.blocks[i];
+            const colInfo = checkCollision(ball, b);
+
+            if (colInfo.collided) {
+                // 가시 충돌 시 즉시 게임 오버
+                if (b.type === 3) {
+                    triggerGameOver();
+                    return;
+                }
+
+                // 정상적 착지 시 수평, 수직 정렬
+                if (colInfo.dir === 'top' && ball.vy > 0) {
+                    ball.y = colInfo.closestY - ball.radius;
+                    
+                    // 착지 시의 통통 찌그러짐 표현
+                    ball.scaleX = 1.35;
+                    ball.scaleY = 0.7;
+
+                    if (b.type === 2) { // 옐로우 꽃 트램펄린 고공점프
+                        ball.vy = ball.superBounceForce;
+                        audio.playSuperBounce();
+                        spawnBounceParticles(ball.x, ball.y + ball.radius, '#fbbf24');
+                    } else if (b.type === 4) { // 바삭 비스킷 과자 블록
+                        ball.vy = ball.bounceForce;
+                        audio.playBounce();
+                        spawnBounceParticles(ball.x, ball.y + ball.radius, '#ea580c');
+                        b.hp--;
+                        if (b.hp <= 0) {
+                            // 부서진 과자 조각 연출
+                            spawnCollectParticles(b.x + b.width/2, b.y + b.height/2);
+                            gameState.blocks.splice(i, 1);
+                        }
+                    } else { // 기본 발판
+                        ball.vy = ball.bounceForce;
+                        audio.playBounce();
+                        spawnBounceParticles(ball.x, ball.y + ball.radius, '#38bdf8');
+                    }
+                } else if (colInfo.dir === 'bottom' && ball.vy < 0) {
+                    ball.y = colInfo.closestY + ball.radius;
+                    ball.vy = 0;
+                } else if (colInfo.dir === 'left') {
+                    ball.x = colInfo.closestX - ball.radius;
+                } else if (colInfo.dir === 'right') {
+                    ball.x = colInfo.closestX + ball.radius;
+                }
+            }
+        }
+
+        // 하트스타(별) 컬렉트 로직
+        gameState.stars.forEach(s => {
+            if (s.collected) return;
+            const dist = Math.hypot(ball.x - s.x, ball.y - s.y);
+            if (dist < ball.radius + 15) {
+                s.collected = true;
+                audio.playCollect();
+                spawnCollectParticles(s.x, s.y);
+                updateHUDStars();
+            }
+        });
+
+        // 개방된 무지개 포탈 진입 조건 체크
+        if (gameState.portal) {
+            const p = gameState.portal;
+            const allStarsCollected = gameState.stars.every(s => s.collected);
+            if (allStarsCollected) {
+                const dist = Math.hypot(ball.x - p.x, ball.y - p.y);
+                if (dist < ball.radius + 20) {
+                    triggerLevelClear();
+                }
+            }
+        }
+    }
+
+    function showStatusModal(title, desc, icon, primaryText, primaryCallback) {
+        const overlay = document.getElementById('status-overlay');
+        const modalContent = document.getElementById('status-modal-content');
+        
+        document.getElementById('status-title').innerText = title;
+        document.getElementById('status-desc').innerText = desc;
+        document.getElementById('status-icon').innerText = icon;
+        
+        const primBtn = document.getElementById('btn-overlay-primary');
+        primBtn.innerText = primaryText;
+        
+        const newPrimBtn = primBtn.cloneNode(true);
+        primBtn.parentNode.replaceChild(newPrimBtn, primBtn);
+        newPrimBtn.addEventListener('click', primaryCallback);
+
+        overlay.classList.remove('hidden');
+        setTimeout(() => {
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            modalContent.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    function hideStatusModal() {
+        const overlay = document.getElementById('status-overlay');
+        const modalContent = document.getElementById('status-modal-content');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+        }, 150);
+    }
+
+    function toggleMenuOverlay(show) {
+        const overlay = document.getElementById('start-overlay');
+        if (show) {
+            overlay.classList.remove('hidden');
+            gameState.isActive = false;
+        } else {
+            overlay.classList.add('hidden');
+            gameState.isActive = true;
+            audio.init();
+        }
+    }
+
+    document.getElementById('btn-overlay-secondary').addEventListener('click', () => {
+        hideStatusModal();
+        loadLevel(0);
+    });
+
+    document.getElementById('btn-start').addEventListener('click', () => {
+        toggleMenuOverlay(false);
+        loadLevel(0);
+    });
+
+    // 느리게 하기(거북이 모드) 토글 스위치
+    const helperSlowBtn = document.getElementById('helper-slow');
+    helperSlowBtn.addEventListener('click', () => {
+        isSlowMode = !isSlowMode;
+        if (isSlowMode) {
+            helperSlowBtn.innerText = "🐰 빠르게 하기";
+            helperSlowBtn.classList.remove('bg-purple-100', 'text-purple-700', 'border-purple-300');
+            helperSlowBtn.classList.add('bg-amber-100', 'text-amber-700', 'border-amber-300');
+        } else {
+            helperSlowBtn.innerText = "🐢 느리게 하기";
+            helperSlowBtn.classList.remove('bg-amber-100', 'text-amber-700', 'border-amber-300');
+            helperSlowBtn.classList.add('bg-purple-100', 'text-purple-700', 'border-purple-300');
+        }
+    });
+
+    // 다음 단계 스킵
+    document.getElementById('helper-skip').addEventListener('click', () => {
+        if (gameState.currentLevelIdx + 1 < STAGE_TEMPLATES.length) {
+            loadLevel(gameState.currentLevelIdx + 1);
+        } else {
+            loadLevel(0); // 끝판이면 처음으로
+        }
+    });
+
+    function render() {
+        ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+        // 귀여운 하늘 파스텔 무지개와 구름 배경 그리기
+        ctx.fillStyle = '#bae6fd';
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        
+        // 배경 무지개 아치형
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        const rainbowColors = ['#f43f5e', '#fb923c', '#facc15', '#4ade80', '#60a5fa', '#a855f7'];
+        rainbowColors.forEach((color, idx) => {
+            ctx.beginPath();
+            ctx.arc(GAME_WIDTH / 2, GAME_HEIGHT, 400 - idx * 15, Math.PI, 0);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 15;
+            ctx.stroke();
+        });
+        ctx.restore();
+
+        // 둥실둥실 배경구름 데코레이션
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.arc(150, 150, 40, 0, Math.PI * 2);
+        ctx.arc(190, 140, 50, 0, Math.PI * 2);
+        ctx.arc(240, 150, 40, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(600, 180, 30, 0, Math.PI * 2);
+        ctx.arc(640, 170, 40, 0, Math.PI * 2);
+        ctx.arc(680, 180, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        // 물리 업데이트 및 요소 그리기
+        updateGame();
+
+        drawBlocks(ctx);
+        drawPortal(ctx);
+        drawStars(ctx);
+        drawBall(ctx);
+
+        // 파티클 업데이트 및 렌더
+        for (let i = gameState.particles.length - 1; i >= 0; i--) {
+            const p = gameState.particles[i];
+            p.update();
+            p.draw(ctx);
+            if (p.life <= 0) {
+                gameState.particles.splice(i, 1);
+            }
+        }
+
+        requestAnimationFrame(render);
+    }
+
+    // 로드 시 실행 시작
+    window.onload = function() {
+        loadLevel(0);
+        render();
+    };
+    </script>
+</body>
+</html>
